@@ -93,10 +93,16 @@ function _displayDefault() {
 
   touchBarState=''
 
-  # CURRENT_DIR
+  # CURRENT_DIR ➡️
   # -----------
   echo -ne "\033]1337;SetKeyLabel=F1=👉 $(echo $(pwd) | awk -F/ '{print $(NF-1)"/"$(NF)}')\a"
-  bindkey -s '^[OP' 'pwd \n'
+  bindkey -s '^[OP' 'atom . \n'
+  echo -ne "\033]1337;SetKeyLabel=F2=⌨️ $(echo 'bastion')\a"
+  bindkey -s '^[OQ' 'ssh pb \n'
+  echo -ne "\033]1337;SetKeyLabel=F3=⌨️ $(echo 'secure-bastion')\a"
+  bindkey -s '^[OR' 'ssh pbs \n'
+  echo -ne "\033]1337;SetKeyLabel=F4=➡️ $(echo 'puppet')\a"
+  bindkey -s '^[OS' 'cd ~/Github/Infra/Puppet \n'
 
   # GIT
   # ---
@@ -122,12 +128,14 @@ function _displayDefault() {
 
     echo -ne "\033]1337;SetKeyLabel=F2=🎋 $(git_current_branch)\a"
     echo -ne "\033]1337;SetKeyLabel=F3=$touchbarIndicators\a"
-    echo -ne "\033]1337;SetKeyLabel=F4=✉️ push\a";
+    echo -ne "\033]1337;SetKeyLabel=F4=✉️ push\a"
+    echo -ne "\033]1337;SetKeyLabel=F5=🔑 commit!\a";
 
     # bind git actions
-    bindkey -s '^[OQ' 'git branch -a \n'
+    bindkey '^[OQ' _checkoutBranch
     bindkey -s '^[OR' 'git status \n'
-    bindkey -s '^[OS' "git push origin $(git_current_branch) \n"
+    bindkey -s '^[OS' "git push fork $(git_current_branch) \n"
+    bindkey -s '^[[15~' "git commit -a \n"
   fi
 
   # PACKAGE.JSON
@@ -136,6 +144,26 @@ function _displayDefault() {
     echo -ne "\033]1337;SetKeyLabel=F5=⚡️ npm-run\a"
     bindkey "${fnKeys[5]}" _displayNpmScripts
   fi
+}
+
+function _checkoutBranch() {
+
+  _clearTouchbar
+  _unbindTouchbar
+
+  touchBarState='gitCheckout'
+
+  fnKeysIndex=1
+  for branch in $(git branch); do
+    if [[ $branch != "*" ]]; then
+      fnKeysIndex=$((fnKeysIndex + 1))
+      bindkey -s $fnKeys[$fnKeysIndex] "git checkout $branch \n"
+      echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=$branch\a"
+    fi
+  done
+
+  echo -ne "\033]1337;SetKeyLabel=F1=👈 back\a"
+  bindkey "${fnKeys[1]}" _displayDefault
 }
 
 function _displayNpmScripts() {
@@ -163,10 +191,13 @@ function _displayNpmScripts() {
 
 zle -N _displayDefault
 zle -N _displayNpmScripts
+zle -N _checkoutBranch
 
 precmd_iterm_touchbar() {
   if [[ $touchBarState == 'npm' ]]; then
     _displayNpmScripts
+  elif [[ $touchBarState == 'gitCheckout' ]]; then
+    _checkoutBranch
   else
     _displayDefault
   fi
